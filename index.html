@@ -543,13 +543,22 @@ function onCode(t){if(got)return;got=true;if(navigator.vibrate)navigator.vibrate
   $('#fCode').value=normCode(t);clearErr();refreshFound();if(look($('#fCode').value))$('#fQty').focus()}
 async function openScan(){
   if(typeof Html5Qrcode==='undefined'){toast('Skaner yuklanmoqda, bir soniyadan keyin bosing');return}
-  got=false;torch=false;$('#sTorch').classList.remove('on');$('#scan').classList.remove('hidden');
+  got=false;$('#scan').classList.remove('hidden');clearTimeout(idleT);
   try{if(!qr)qr=new Html5Qrcode('scanVideo',{formatsToSupport:FMT(),verbose:false,experimentalFeatures:{useBarCodeDetectorIfSupported:true}});
-    await qr.start({facingMode:'environment'},{fps:15,disableFlip:true,videoConstraints:{facingMode:'environment',width:{ideal:1280},height:{ideal:720}}},onCode,()=>{});
-    scanning=true;try{const c=qr.getRunningTrackCapabilities();$('#sTorch').classList.toggle('hidden',!c.torch)}catch(e){$('#sTorch').classList.add('hidden')}}
-  catch(e){closeScan();toast('Kamera ochilmadi. Ruxsat bering: Настройки → Safari → Камера')}
+    const st=qr.getState(); // 1 — o'chiq, 2 — ishlayapti, 3 — pauza
+    if(st===3)qr.resume(); // kamera yoqiq turibdi — ruxsat qayta so'ralmaydi
+    else if(st!==2){torch=false;$('#sTorch').classList.remove('on');
+      await qr.start({facingMode:'environment'},{fps:15,disableFlip:true,videoConstraints:{facingMode:'environment',width:{ideal:1280},height:{ideal:720}}},onCode,()=>{});
+      try{const c=qr.getRunningTrackCapabilities();$('#sTorch').classList.toggle('hidden',!c.torch)}catch(e){$('#sTorch').classList.add('hidden')}}
+    scanning=true}
+  catch(e){closeScan();toast('Kamera ochilmadi. Ruxsat bering: Настройки → Safari → Камера → Разрешить')}
 }
-async function closeScan(){$('#scan').classList.add('hidden');if(qr&&scanning){scanning=false;try{await qr.stop()}catch(e){}}}
+/* Yopilganda kamerani o'chirmaymiz, pauza qilamiz: keyingi skanerda ruxsat so'ralmaydi. 3 daqiqa ishlatilmasa o'chadi. */
+let idleT=null;
+async function closeScan(){$('#scan').classList.add('hidden');
+  if(qr&&scanning){try{if(qr.getState()===2)qr.pause(true)}catch(e){}clearTimeout(idleT);idleT=setTimeout(stopCam,180000)}}
+async function stopCam(){clearTimeout(idleT);if(qr){try{if(qr.getState()!==1)await qr.stop()}catch(e){}}scanning=false}
+document.addEventListener('visibilitychange',()=>{if(document.hidden){$('#scan').classList.add('hidden');stopCam()}});
 $('#fScan').onclick=openScan;$('#sCancel').onclick=closeScan;$('#sX').onclick=closeScan;
 $('#sTorch').onclick=async()=>{torch=!torch;try{await qr.applyVideoConstraints({advanced:[{torch}]});$('#sTorch').classList.toggle('on',torch)}catch(e){toast('Chiroq yoqilmadi')}};
 $('#sPhoto').onclick=()=>{closeScan();$('#photoIn').click()};
