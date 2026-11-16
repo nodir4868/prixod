@@ -143,7 +143,7 @@ input[type=date].inp{text-align:center}
     <div class="wrap"><input class="inp" id="fCode" inputmode="numeric" autocomplete="off" placeholder="0">
       <button class="in-btn" id="fScan" aria-label="Skanerlash"><svg><use href="#i-scan"/></svg></button></div>
     <div id="fFound"></div>
-    <label class="lab">Количество</label>
+    <label class="lab" id="fQtyLab">Количество</label>
     <div class="stepper"><input id="fQty" type="number" inputmode="numeric" placeholder="0">
       <button data-d="-1" aria-label="Kamaytirish">−</button><button data-d="1" aria-label="Ko'paytirish">+</button></div>
     <div class="total" id="fTotal"></div>
@@ -214,6 +214,9 @@ function setCat(rows){CAT={};rows.forEach(r=>{if(!(r[0] in CAT))CAT[r[0]]={kol:r
 async function loadCat(){const c=store.get('cat',null);if(c)setCat(c);
   try{const rows=await api('getCatalog');store.set('cat',rows);setCat(rows);refreshFound()}catch(e){if(!c)toast('Katalog yuklanmadi: '+e.message)}}
 const look=c=>CAT[String(c||'').trim()]||null;
+/* Shtrix kod boshi: 4 — dona, 6 — qop, 7 — korobka */
+function unit(code){const c=String(code||'').trim()[0];
+  return c==='4'?{id:'dona',name:'Dona',short:'dona'}:c==='6'?{id:'qop',name:'Qop',short:'qop'}:c==='7'?{id:'korobka',name:'Korobka',short:'kor'}:{id:'?',name:'Upakovka',short:'up'}}
 
 /* ---------- bosh ekran ---------- */
 async function loadDates(){
@@ -223,7 +226,7 @@ async function loadDates(){
 }
 function renderDates(d){
   $('#dates').innerHTML=`<button class="li" data-d=""><div class="m">All</div>${chev}</button>`+
-    d.map(x=>`<button class="li" data-d="${x.date}"><div class="m">${dmy(x.date)}</div><div class="r"><b>${fmt(x.pcs)}</b>${x.n} ta · ${fmt(x.kor)} kor</div>${chev}</button>`).join('');
+    d.map(x=>`<button class="li" data-d="${x.date}"><div class="m">${dmy(x.date)}</div><div class="r"><b>${fmt(x.pcs)} dona</b>${x.n} ta</div>${chev}</button>`).join('');
 }
 $('#dates').onclick=e=>{const b=e.target.closest('.li');if(b)openDay(b.dataset.d,false)};
 $('#hSync').onclick=()=>{loadDates();loadCat();toast('Yangilandi',true)};
@@ -245,11 +248,11 @@ async function loadRows(){
 function rowHtml(r,showDate){return `<button class="li" data-row="${r.row}"><div class="m">
   <div><span class="tag ${esc(r.tur)}">${esc(r.tur)}</span><span class="tag ${esc(r.sklad)}">${esc(r.sklad)}</span>${esc(r.art||'?')}${showDate?' · <span class="s">'+dmy(r.date)+'</span>':''}</div>
   <div class="s">${esc(r.name)}${r.comment?' · <i>'+esc(r.comment)+'</i>':''}</div></div>
-  <div class="r"><b>${fmt(r.pcs)}</b>${fmt(r.qty)} kor</div></button>`}
+  <div class="r"><b>${fmt(r.pcs)} dona</b>${fmt(r.qty)} ${unit(r.code).short}</div></button>`}
 function renderRows(more){
   if(!ROWS.length){$('#rows').innerHTML='<div class="pad muted center">Prixod yo\'q</div>';$('#dSum').textContent='';return}
   const pcs=ROWS.reduce((s,r)=>s+(Number(r.pcs)||0),0),kor=ROWS.reduce((s,r)=>s+(Number(r.qty)||0),0);
-  $('#dSum').textContent=ROWS.length+' ta · '+fmt(kor)+' kor · '+fmt(pcs)+' dona'+(more?' (oxirgilari)':'');
+  $('#dSum').textContent=ROWS.length+' ta · '+fmt(pcs)+' dona'+(more?' (oxirgilari)':'');
   $('#rows').innerHTML=ROWS.map(r=>rowHtml(r,!DAY.date)).join('');
 }
 $('#rows').onclick=e=>{const b=e.target.closest('.li');if(b){const r=ROWS.find(x=>x.row===Number(b.dataset.row));if(r)openForm(r)}};
@@ -275,7 +278,8 @@ function refreshFound(){
   const code=$('#fCode').value.replace(/\s+/g,''),q=Number($('#fQty').value),f=look(code),fb=$('#fFound');
   if(!code)fb.innerHTML='';
   else if(!f)fb.innerHTML=`<div class="found bad">${CAT_N?'Bu kod katalogda (Лист2) yo\'q':'Katalog yuklanmoqda…'}</div>`;
-  else fb.innerHTML=`<div class="found"><b>Арт. ${esc(f.art)}</b> — ${esc(f.name)}<div class="s">Korobkada: ${f.kol===''?'<span style="color:var(--err)">ko\'rsatilmagan</span>':fmt(f.kol)+' dona'}</div></div>`;
+  else{const u=unit(code);fb.innerHTML=`<div class="found"><b>Арт. ${esc(f.art)}</b> — ${esc(f.name)}<div class="s">${u.name}${u.id==='dona'?'':' — ichida: '+(f.kol===''?'<span style="color:var(--err)">ko\'rsatilmagan</span>':fmt(f.kol)+' dona')}</div></div>`}
+  $('#fQtyLab').textContent='Количество'+(code&&f?' ('+unit(code).name.toLowerCase()+')':'');
   $('#fTotal').innerHTML=f&&f.kol!==''&&q>0?`Jami: <b>${fmt(f.kol*q)}</b> dona`:'';
 }
 $('#fCode').oninput=refreshFound;$('#fQty').oninput=refreshFound;
@@ -285,7 +289,7 @@ function validate(st){
   if(!st.date)return 'Sanani tanlang';if(!st.sklad)return 'Skladni tanlang';if(!st.tur)return 'Приход турини tanlang';
   if(!st.code)return 'Shtrix kodni kiriting';const f=look(st.code);
   if(!f)return CAT_N?'Kod katalogda yo\'q (Лист2 ga qo\'shing)':'Katalog hali yuklanmadi';
-  if(f.kol==='')return 'Bu kodda korobkadagi soni yo\'q — korobka kodini uring';
+  if(f.kol==='')return 'Bu kodda '+unit(st.code).name.toLowerCase()+' ichidagi soni yo\'q (Лист2 B ustuni) — boshqa kodni uring';
   if(!(st.qty>0)||Math.floor(st.qty)!==st.qty)return 'Количество ni kiriting';return ''}
 $('#fCancel').onclick=back;
 $('#fSave').onclick=async()=>{
