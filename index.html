@@ -120,6 +120,17 @@ input[type=date].inp{display:flex;align-items:center}
 .seg.bad button{border-color:var(--danger)}
 .scanbtn{width:100%;height:60px;border-radius:var(--r-sm);border:2px solid var(--primary);background:var(--primary-soft);color:var(--primary);font-size:18px;font-weight:800;display:flex;align-items:center;justify-content:center;gap:10px}
 .scanbtn svg{width:28px;height:28px}
+.farqlink{display:flex;align-items:center;gap:12px;width:100%;margin-top:10px;padding:14px;border-radius:var(--r);border:1px solid var(--border);background:var(--surface);text-align:left;min-height:60px}
+.farqlink:active{background:var(--surface2)}
+.farqlink>svg:first-child{width:24px;height:24px;color:var(--warn);flex:none}
+.farqlink b{display:block;font-size:16px}
+.farqlink .grow span{font-size:13px;color:var(--muted)}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;margin:10px 4px 0;font-size:12px;color:var(--muted)}
+.legend i{display:inline-block;width:8px;height:8px;border-radius:4px;margin-right:6px}
+.legend .neg{background:var(--danger)}.legend .pos{background:var(--primary)}
+.fv{font-size:18px;font-weight:800}
+.fv.neg{color:var(--danger)}.fv.pos{color:var(--primary)}
+.fdtot{margin:12px 4px;display:flex;justify-content:space-between;font-weight:700}
 .pickbtn{width:100%;height:52px;margin-top:10px;border-radius:var(--r-sm);border:1px solid var(--border2);background:var(--surface);color:var(--text);font-size:16px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:8px}
 .pickbtn svg{width:20px;height:20px;color:var(--muted)}
 #pick{position:fixed;inset:0;z-index:35;background:var(--bg);overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:calc(40px + env(safe-area-inset-bottom))}
@@ -202,6 +213,7 @@ input[type=date].inp{display:flex;align-items:center}
   <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
   <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
   <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 3l10 18H2z"/><path d="M12 10v4M12 17.5v.5"/></symbol>
+  <symbol id="i-diff" viewBox="0 0 24 24"><path d="M12 3v18M5 7h14M7 7l-3 7a3 3 0 0 0 6 0zM17 7l-3 7a3 3 0 0 0 6 0z"/></symbol>
   <symbol id="i-box" viewBox="0 0 24 24"><path d="M3 7l9-4 9 4v10l-9 4-9-4z"/><path d="M3 7l9 4 9-4M12 11v10"/></symbol>
 </svg>
 
@@ -220,12 +232,14 @@ input[type=date].inp{display:flex;align-items:center}
 <div id="home" class="screen hidden">
   <header class="top"><div class="top-in">
     <div class="ttl"><b>Prixod</b><span>Gektar ombori</span></div>
+    <button class="ib" id="hFarq" aria-label="Sklad va sborka farqi"><svg class="ico"><use href="#i-diff"/></svg></button>
     <button class="ib" id="hSearch" aria-label="Qidirish"><svg class="ico"><use href="#i-search"/></svg></button>
     <button class="ib" id="hSync" aria-label="Yangilash"><svg class="ico"><use href="#i-sync"/></svg></button>
   </div></header>
   <main class="wrap">
     <div id="syncBox"></div>
     <div class="today" id="todayCard"></div>
+    <button class="farqlink" id="farqLink"><svg class="ico"><use href="#i-diff"/></svg><span class="grow"><b>Sklad ↔ sborka farqi</b><span id="farqLinkSub">Zborka va Bossuv bo'yicha</span></span><svg class="ico chev"><use href="#i-chev"/></svg></button>
     <div class="sec"><span>Sanalar</span></div>
     <div class="list" id="dates"><div class="skel"></div><div class="skel"></div><div class="skel"></div></div>
   </main>
@@ -248,6 +262,34 @@ input[type=date].inp{display:flex;align-items:center}
     <div class="list" id="rows"></div>
   </main>
   <button class="fab" id="fab2" aria-label="Yangi prixod"><svg class="ico"><use href="#i-plus"/></svg>Prixod</button>
+</div>
+
+<!-- Farq: sklad ↔ sborka -->
+<div id="farq" class="screen hidden">
+  <header class="top"><div class="top-in back">
+    <button class="ib" data-back aria-label="Orqaga"><svg class="ico"><use href="#i-back"/></svg></button>
+    <div class="ttl"><b>Sklad ↔ sborka farqi</b><span id="fqSub">Общее кол-во остатка · Приход</span></div>
+    <button class="ib" id="fqSync" aria-label="Yangilash"><svg class="ico"><use href="#i-sync"/></svg></button>
+  </div></header>
+  <main class="wrap">
+    <div class="filters" id="fqType" role="group" aria-label="Turi"></div>
+    <div style="padding-top:10px"><label for="fqQ" class="hidden">Qidirish</label>
+      <input class="inp" id="fqQ" placeholder="Artikul yoki nom" autocomplete="off" enterkeyhint="search"></div>
+    <div class="legend"><span><i class="neg"></i>minus — sborka kam (skladga ko'p tushgan)</span><span><i class="pos"></i>plus — sborka ko'p</span></div>
+    <div class="sec"><span id="fqSum"></span><span id="fqAt"></span></div>
+    <div class="list" id="fqList"><div class="skel"></div><div class="skel"></div><div class="skel"></div></div>
+  </main>
+</div>
+<div id="farqDay" class="screen hidden">
+  <header class="top"><div class="top-in back">
+    <button class="ib" data-back aria-label="Orqaga"><svg class="ico"><use href="#i-back"/></svg></button>
+    <div class="ttl"><b id="fdTitle"></b><span id="fdSub"></span></div>
+  </div></header>
+  <main class="wrap">
+    <div class="sec"><span>Sana</span><span>Sklad · Sborka · Farq</span></div>
+    <div class="list" id="fdList"></div>
+    <div class="fdtot" id="fdTot"></div>
+  </main>
 </div>
 
 <!-- Forma -->
@@ -329,7 +371,7 @@ const store={get(k,d){try{const v=localStorage.getItem(k);return v===null?d:JSON
 let PIN=store.get('pin',''),CAT={},CAT_N=0;
 
 /* ---------- server ---------- */
-const RETRY_OK={bootstrap:1,getCatalog:1,listDates:1,listPrixod:1}; // addPrixod — navbat o'zi qayta yuboradi
+const RETRY_OK={bootstrap:1,getCatalog:1,listDates:1,listPrixod:1,getFarq:1}; // addPrixod — navbat o'zi qayta yuboradi
 const SLOW={addPrixod:1,updatePrixod:1,deletePrixod:1}; // yozish og'ir faylda uzoq davom etishi mumkin
 async function api(fn,...args){try{return await api1(fn,args)}catch(e){if(!e.net||!RETRY_OK[fn])throw e;await new Promise(r=>setTimeout(r,1500));return api1(fn,args)}}
 async function api1(fn,args){
@@ -368,12 +410,12 @@ function enrich(r){if(r.art&&r.pcs!=='')return r;const f=look(r.code);if(f)retur
 
 /* ---------- ekranlar ---------- */
 const stack=[];
-function show(id,push){['home','day','formView'].forEach(s=>$('#'+s).classList.toggle('hidden',s!==id));if(push){stack.push(id);history.pushState({s:id},'')}window.scrollTo(0,0)}
+function show(id,push){['home','day','formView','farq','farqDay'].forEach(s=>$('#'+s).classList.toggle('hidden',s!==id));if(push){stack.push(id);history.pushState({s:id},'')}window.scrollTo(0,0)}
 function back(){if(stack.length>1)history.back();else show('home')}
 window.addEventListener('popstate',()=>{
   if(!$('#scan').classList.contains('hidden')){closeScan();history.pushState({},'');return}
   if(!$('#pick').classList.contains('hidden')){closePick();history.pushState({},'');return}
-  stack.pop();const p=stack[stack.length-1]||'home';show(p);if(p==='home')renderHome();else if(p==='day')renderRows();
+  stack.pop();const p=stack[stack.length-1]||'home';show(p);if(p==='home')renderHome();else if(p==='day')renderRows();else if(p==='farq')renderFarq();
 });
 document.querySelectorAll('[data-back]').forEach(b=>b.onclick=back);
 
@@ -558,6 +600,44 @@ $('#fDel').onclick=async()=>{
 };
 $('#fab').onclick=()=>openForm(null);$('#fab2').onclick=()=>openForm(null);
 
+/* ---------- sklad ↔ sborka farqi ---------- */
+let FQ=store.get('farq',null),FQT=store.get('farqType','Zborka'),fqLoading=false,fqErr='';
+function openFarq(){$('#fqQ').value='';show('farq',true);renderFarq();loadFarq()}
+async function loadFarq(){
+  if(fqLoading)return;fqLoading=true;fqErr='';$('#fqSync').classList.add('spin');
+  try{FQ=await api('getFarq');store.set('farq',FQ)}
+  catch(e){if(e.pin){logout(e.message);return}fqErr=e.message;toast(e.message)}
+  finally{fqLoading=false;$('#fqSync').classList.remove('spin');if(!$('#farq').classList.contains('hidden'))renderFarq()}
+}
+function renderFarq(){
+  const types=FQ?Object.keys(FQ.types).filter(t=>FQ.types[t].length):[];
+  const order=['Zborka','Bossuv','Vazvrat'];types.sort((a,b)=>(order.indexOf(a)+1||9)-(order.indexOf(b)+1||9));
+  if(types.length&&!types.includes(FQT))FQT=types[0];
+  $('#fqType').innerHTML=types.map(t=>`<button class="${t===FQT?'on':''}" data-t="${esc(t)}">${esc(t)} · ${FQ.types[t].length}</button>`).join('');
+  const box=$('#fqList');
+  if(!FQ){box.innerHTML=fqErr?`<div class="empty" style="color:var(--danger)">Yuklanmadi: ${esc(fqErr)}</div>`:'<div class="skel"></div><div class="skel"></div><div class="skel"></div>';$('#fqSum').textContent='';return}
+  const q=$('#fqQ').value.trim().toLowerCase();
+  const list=(FQ.types[FQT]||[]).filter(x=>!q||(x.art+' '+x.name).toLowerCase().includes(q));
+  const tot=list.reduce((s,x)=>s+x.farq,0);
+  $('#fqSum').innerHTML=`<span>${list.length} ta artikul · jami <span class="num">${tot>0?'+':''}${fmt(tot)}</span></span>`;
+  $('#fqAt').textContent=fqLoading?'yangilanmoqda…':'soat '+FQ.at;
+  box.innerHTML=list.length?list.map(x=>`<button class="row" data-art="${esc(x.art)}"><div class="grow"><div class="t">Арт. ${esc(x.art)}</div><div class="s">${esc(x.name)}</div></div>
+    <div class="rt"><span class="fv num ${x.farq<0?'neg':'pos'}">${x.farq>0?'+':''}${fmt(x.farq)}</span><span>${x.n} kun</span></div>${chev}</button>`).join('')
+    :`<div class="empty">${q?'Topilmadi':'Farq yo\'q'}</div>`;
+}
+$('#fqType').onclick=e=>{const b=e.target.closest('button');if(!b)return;FQT=b.dataset.t;store.set('farqType',FQT);renderFarq()};
+$('#fqQ').oninput=renderFarq;
+$('#fqSync').onclick=loadFarq;
+$('#fqList').onclick=e=>{const b=e.target.closest('.row');if(!b)return;
+  const art=b.dataset.art,it=(FQ.types[FQT]||[]).find(x=>x.art===art),rows=FQ.rows[FQT+'|'+art]||[];
+  $('#fdTitle').textContent='Арт. '+art+' · '+FQT;$('#fdSub').textContent=it?it.name:'';
+  $('#fdList').innerHTML=rows.map(r=>`<div class="row" style="cursor:default"><div class="grow"><div class="t">${r.date?dmy(r.date):'—'}</div><div class="s num">Sklad ${fmt(r.e)} · Sborka ${r.h===''?'kiritilmagan':fmt(r.h)}</div></div>
+    <div class="rt"><span class="fv num ${r.i<0?'neg':'pos'}">${r.i>0?'+':''}${fmt(r.i)}</span></div></div>`).join('')||'<div class="empty">Ma\'lumot yo\'q</div>';
+  const t=rows.reduce((s,r)=>s+r.i,0);
+  $('#fdTot').innerHTML=`<span>Jami farq</span><span class="fv num ${t<0?'neg':'pos'}">${t>0?'+':''}${fmt(t)}</span>`;
+  show('farqDay',true)};
+$('#hFarq').onclick=openFarq;$('#farqLink').onclick=openFarq;
+
 /* ---------- kodsiz tanlash (katalogdan) ---------- */
 function openPick(){if(!CAT_N){toast('Katalog hali yuklanmadi');return}
   $('#pick').classList.remove('hidden');$('#pQ').value='';renderPick();setTimeout(()=>$('#pQ').focus(),60)}
@@ -619,7 +699,7 @@ function startApp(){
   const c=store.get('cat',null);if(c)setCat(c);
   show('home');renderHome();refreshDates(true);flushOut();
 }
-function logout(msg){PIN='';store.set('pin',null);['home','day','formView'].forEach(s=>$('#'+s).classList.add('hidden'));
+function logout(msg){PIN='';store.set('pin',null);['home','day','formView','farq','farqDay'].forEach(s=>$('#'+s).classList.add('hidden'));
   $('#pinView').classList.remove('hidden');$('#pinErr').textContent=msg||''}
 async function login(){
   const pin=$('#pinIn').value.trim();if(!pin)return;PIN=pin;const b=$('#pinBtn');b.disabled=true;b.textContent='Tekshirilmoqda…';$('#pinErr').textContent='';
