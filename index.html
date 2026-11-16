@@ -120,6 +120,14 @@ input[type=date].inp{display:flex;align-items:center}
 .seg.bad button{border-color:var(--danger)}
 .scanbtn{width:100%;height:60px;border-radius:var(--r-sm);border:2px solid var(--primary);background:var(--primary-soft);color:var(--primary);font-size:18px;font-weight:800;display:flex;align-items:center;justify-content:center;gap:10px}
 .scanbtn svg{width:28px;height:28px}
+.pickbtn{width:100%;height:52px;margin-top:10px;border-radius:var(--r-sm);border:1px solid var(--border2);background:var(--surface);color:var(--text);font-size:16px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:8px}
+.pickbtn svg{width:20px;height:20px;color:var(--muted)}
+#pick{position:fixed;inset:0;z-index:35;background:var(--bg);overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:calc(40px + env(safe-area-inset-bottom))}
+.pg{margin-top:14px}
+.pg h3{margin:0 4px 8px;font-size:15px;font-weight:700}
+.pg h3 span{display:block;font-size:13px;color:var(--muted);font-weight:500}
+.ucode{flex:none;min-width:76px;height:28px;padding:0 8px;border-radius:7px;font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center;letter-spacing:.04em;text-transform:uppercase;background:var(--text);color:var(--bg)}
+.row:disabled{opacity:.45}
 .or{display:flex;align-items:center;gap:10px;color:var(--faint);font-size:13px;margin:10px 0}
 .or::before,.or::after{content:"";flex:1;height:1px;background:var(--border)}
 .prod{margin-top:10px;padding:14px;border-radius:var(--r-sm);background:var(--surface2);border:1px solid var(--border2);display:flex;gap:12px;align-items:flex-start}
@@ -262,7 +270,8 @@ input[type=date].inp{display:flex;align-items:center}
         <button data-v="Vazvrat" role="radio"><svg class="ico ck"><use href="#i-check"/></svg>Vazvrat</button></div></div>
     <div class="f-sec"><div class="lab"><span>Штрих код</span><em id="eCode"></em></div>
       <button class="scanbtn" id="fScan"><svg class="ico"><use href="#i-scan"/></svg>Skanerlash</button>
-      <div class="or">yoki qo'lda kiriting</div>
+      <button class="pickbtn" id="fPick"><svg class="ico"><use href="#i-search"/></svg>Kodsiz — artikul yoki nom bo'yicha</button>
+      <div class="or">yoki kodni qo'lda kiriting</div>
       <label for="fCode" class="hidden">Shtrix kod</label>
       <input class="inp num" id="fCode" inputmode="numeric" autocomplete="off" placeholder="6780…">
       <div id="fFound" aria-live="polite"></div></div>
@@ -296,6 +305,18 @@ input[type=date].inp{display:flex;align-items:center}
     <button class="s-photo" id="sPhoto"><svg class="ico"><use href="#i-photo"/></svg>Rasmdan</button>
     <button class="s-close" id="sCancel">Bekor</button>
   </div>
+</div>
+<!-- Kodsiz tanlash: katalogdan artikul/nom bo'yicha -->
+<div id="pick" class="hidden" role="dialog" aria-label="Mahsulot tanlash">
+  <header class="top"><div class="top-in back">
+    <button class="ib" id="pBack" aria-label="Orqaga"><svg class="ico"><use href="#i-back"/></svg></button>
+    <div class="ttl"><b>Mahsulot tanlash</b><span>Shtrix kod Лист2 katalogidan olinadi</span></div>
+  </div></header>
+  <main class="wrap">
+    <div style="padding-top:12px"><label for="pQ" class="hidden">Artikul yoki nom</label>
+      <input class="inp" id="pQ" placeholder="Artikul (masalan 219) yoki nomi" autocomplete="off" enterkeyhint="search"></div>
+    <div id="pList"></div>
+  </main>
 </div>
 <div id="fileReader" class="hidden"></div>
 <input type="file" id="photoIn" accept="image/*" capture="environment" class="hidden">
@@ -351,6 +372,7 @@ function show(id,push){['home','day','formView'].forEach(s=>$('#'+s).classList.t
 function back(){if(stack.length>1)history.back();else show('home')}
 window.addEventListener('popstate',()=>{
   if(!$('#scan').classList.contains('hidden')){closeScan();history.pushState({},'');return}
+  if(!$('#pick').classList.contains('hidden')){closePick();history.pushState({},'');return}
   stack.pop();const p=stack[stack.length-1]||'home';show(p);if(p==='home')renderHome();else if(p==='day')renderRows();
 });
 document.querySelectorAll('[data-back]').forEach(b=>b.onclick=back);
@@ -535,6 +557,31 @@ $('#fDel').onclick=async()=>{
   catch(e){toast(e.message);b.disabled=false;b.textContent='O\'chirish';b.classList.remove('sure')}
 };
 $('#fab').onclick=()=>openForm(null);$('#fab2').onclick=()=>openForm(null);
+
+/* ---------- kodsiz tanlash (katalogdan) ---------- */
+function openPick(){if(!CAT_N){toast('Katalog hali yuklanmadi');return}
+  $('#pick').classList.remove('hidden');$('#pQ').value='';renderPick();setTimeout(()=>$('#pQ').focus(),60)}
+function closePick(){$('#pick').classList.add('hidden')}
+const UORDER={'4':0,'6':1,'7':2};
+function renderPick(){
+  const q=$('#pQ').value.trim().toLowerCase(),box=$('#pList');
+  if(!q){box.innerHTML='<div class="empty">Artikul raqami yoki nomini yozing</div>';return}
+  const g={};
+  for(const code in CAT){const c=CAT[code],art=String(c.art),exact=art.toLowerCase()===q;
+    if(!exact&&!(art+' '+c.name).toLowerCase().includes(q))continue;
+    (g[art]=g[art]||{art,name:c.name,exact,codes:[]}).codes.push(code)}
+  const arr=Object.values(g).sort((a,b)=>(b.exact-a.exact)||String(a.art).localeCompare(String(b.art),undefined,{numeric:true})).slice(0,40);
+  if(!arr.length){box.innerHTML='<div class="empty">Katalogda topilmadi</div>';return}
+  box.innerHTML=arr.map(x=>`<div class="pg"><h3>Арт. ${esc(x.art)}<span>${esc(x.name)}</span></h3><div class="list">`+
+    x.codes.sort((a,b)=>(UORDER[a[0]]??9)-(UORDER[b[0]]??9)).map(code=>{const c=CAT[code],u=unit(code),ok=c.kol!=='';
+      return `<button class="row" data-code="${esc(code)}" ${ok?'':'disabled'}><span class="ucode">${u.name}</span>
+        <div class="grow"><div class="t num">${esc(code)}</div><div class="s">${ok?(u.id==='dona'?'1 dona':'ichida '+fmt(c.kol)+' dona'):'ichidagi soni yo\'q (Лист2 B)'}</div></div>${ok?chev:''}</button>`}).join('')+
+    '</div></div>').join('')+(Object.keys(g).length>40?'<div class="empty">Ko\'proq yozing — 40 tadan ko\'pi ko\'rsatilmaydi</div>':'');
+}
+let pT;$('#pQ').oninput=()=>{clearTimeout(pT);pT=setTimeout(renderPick,120)};
+$('#pList').onclick=e=>{const b=e.target.closest('.row');if(!b||b.disabled)return;
+  closePick();$('#fCode').value=b.dataset.code;clearErr();refreshFound();$('#fQty').focus()};
+$('#fPick').onclick=openPick;$('#pBack').onclick=closePick;
 
 /* ---------- skaner ---------- */
 let qr=null,scanning=false,got=false,torch=false;
