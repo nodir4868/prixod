@@ -173,10 +173,15 @@ const API_URL='https://script.google.com/macros/s/AKfycbyNjz1QlB02hN6Jwuy8iJNpGi
 let PIN='',CAT={},CAT_N=0;
 const $=s=>document.querySelector(s);
 const store={get(k,d){try{const v=localStorage.getItem(k);return v===null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
+const RETRY_OK={ping:1,getCatalog:1,listDates:1,listPrixod:1,addPrixod:1}; // addPrixod: reqId tufayli qayta yuborish xavfsiz
 async function api(fn,...args){
+  try{return await api1(fn,args)}
+  catch(e){if(!e.net||!RETRY_OK[fn])throw e;await new Promise(r=>setTimeout(r,1500));return api1(fn,args)}
+}
+async function api1(fn,args){
   const ctl=new AbortController();const t=setTimeout(()=>ctl.abort(),60000);let r;
   try{r=await fetch(API_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({fn,pin:PIN,args}),redirect:'follow',signal:ctl.signal})}
-  catch(e){throw new Error(e.name==='AbortError'?'Server javob bermadi (internetni tekshiring)':'Internet yo\'q yoki server ishlamayapti')}
+  catch(e){const x=new Error(e.name==='AbortError'?'Server javob bermadi (internetni tekshiring)':'Internet yo\'q yoki server ishlamayapti');x.net=true;throw x}
   finally{clearTimeout(t)}
   let j;try{j=await r.json()}catch(e){throw new Error('Server javobi noto\'g\'ri ('+r.status+')')}
   if(!j.ok)throw new Error(j.error);return j.data;
@@ -330,7 +335,7 @@ async function login(pin){
   PIN=pin;
   try{await api('ping');store.set('pin',pin);$('#pinView').classList.add('hidden');
     stack.length=0;stack.push('home');history.replaceState({s:'home'},'');show('home');loadDates();loadCat()}
-  catch(e){PIN='';store.set('pin','');['home','day','formView'].forEach(s=>$('#'+s).classList.add('hidden'));$('#pinView').classList.remove('hidden');$('#pinErr').textContent=e.message}
+  catch(e){if(!e.net){PIN='';store.set('pin','')}else $('#pinIn').value=pin;['home','day','formView'].forEach(s=>$('#'+s).classList.add('hidden'));$('#pinView').classList.remove('hidden');$('#pinErr').textContent=e.message}
 }
 $('#pinBtn').onclick=()=>login($('#pinIn').value.trim());
 $('#pinIn').onkeydown=e=>{if(e.key==='Enter')login($('#pinIn').value.trim())};
