@@ -239,9 +239,7 @@ input[type=date].inp{display:flex;align-items:center}
   </div></header>
   <main class="wrap">
     <div id="syncBox"></div>
-    <div class="today" id="todayCard"></div>
-    <button class="farqlink" id="farqLink"><svg class="ico"><use href="#i-diff"/></svg><span class="grow"><b>Sklad ↔ sborka farqi</b><span id="farqLinkSub">Zborka va Bossuv bo'yicha</span></span><svg class="ico chev"><use href="#i-chev"/></svg></button>
-    <div class="sec"><span>Sanalar</span></div>
+    <div class="today" id="todayCard"></div>    <div class="sec"><span>Sanalar</span></div>
     <div class="list" id="dates"><div class="skel"></div><div class="skel"></div><div class="skel"></div></div>
   </main>
   <button class="fab" id="fab" aria-label="Yangi prixod"><svg class="ico"><use href="#i-plus"/></svg>Prixod</button>
@@ -637,7 +635,7 @@ $('#fqList').onclick=e=>{const b=e.target.closest('.row');if(!b)return;
   const t=rows.reduce((s,r)=>s+r.i,0);
   $('#fdTot').innerHTML=`<span>Jami farq</span><span class="fv num ${t<0?'neg':'pos'}">${t>0?'+':''}${fmt(t)}</span>`;
   show('farqDay',true)};
-$('#hFarq').onclick=openFarq;$('#farqLink').onclick=openFarq;
+$('#hFarq').onclick=openFarq;
 
 /* ---------- kodsiz tanlash (katalogdan) ---------- */
 function openPick(){if(!CAT_N){toast('Katalog hali yuklanmadi');return}
