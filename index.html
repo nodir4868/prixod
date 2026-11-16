@@ -308,10 +308,11 @@ const store={get(k,d){try{const v=localStorage.getItem(k);return v===null?d:JSON
 let PIN=store.get('pin',''),CAT={},CAT_N=0;
 
 /* ---------- server ---------- */
-const RETRY_OK={bootstrap:1,getCatalog:1,listDates:1,listPrixod:1,addPrixod:1};
+const RETRY_OK={bootstrap:1,getCatalog:1,listDates:1,listPrixod:1}; // addPrixod — navbat o'zi qayta yuboradi
+const SLOW={addPrixod:1,updatePrixod:1,deletePrixod:1}; // yozish og'ir faylda uzoq davom etishi mumkin
 async function api(fn,...args){try{return await api1(fn,args)}catch(e){if(!e.net||!RETRY_OK[fn])throw e;await new Promise(r=>setTimeout(r,1500));return api1(fn,args)}}
 async function api1(fn,args){
-  const ctl=new AbortController(),t=setTimeout(()=>ctl.abort(),45000);let r;
+  const ctl=new AbortController(),t=setTimeout(()=>ctl.abort(),SLOW[fn]?150000:45000);let r;
   try{r=await fetch(API_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({fn,pin:PIN,args}),redirect:'follow',signal:ctl.signal})}
   catch(e){const x=new Error(e.name==='AbortError'?'Server javob bermadi':'Internet yo\'q');x.net=true;throw x}
   finally{clearTimeout(t)}
@@ -361,9 +362,11 @@ async function flushOut(){
   if(flushing||!OUT.length||!PIN)return;flushing=true;clearTimeout(retryT);let netFail=false;
   try{for(const it of [...OUT]){if(it.status==='err')continue;
     try{const r=await api('addPrixod',it.st,it.id);OUT=OUT.filter(x=>x.id!==it.id);saveOut();addToCache(enrich({...r,art:it.info.art,name:it.info.name,pcs:it.info.pcs}))}
-    catch(e){if(e.net){it.msg=e.message;netFail=true;saveOut();break}it.status='err';it.msg=e.message;saveOut()}}}
+    catch(e){ // vaqtincha xatolar (internet, server band/timeout) — keyinroq o'zi qayta yuboradi
+      if(e.net||/time|lock|блок|время|превыш|service|служб|busy|занят/i.test(e.message)){it.msg=e.message;netFail=true;saveOut();break}
+      it.status='err';it.msg=e.message;saveOut()}}}
   finally{flushing=false}
-  if(netFail)retryT=setTimeout(flushOut,8000);
+  if(netFail)retryT=setTimeout(flushOut,15000);
   refreshViews();if(!OUT.length)refreshDates(true);
 }
 window.addEventListener('online',flushOut);
@@ -372,9 +375,9 @@ function renderSync(){
   const w=OUT.filter(x=>x.status!=='err').length,e=OUT.filter(x=>x.status==='err').length,b=$('#syncBox');
   if(!w&&!e){b.innerHTML='';return}
   b.innerHTML=(w?`<button class="sync wait" id="syncW"><svg class="ico"><use href="#i-clock"/></svg>${w} ta prixod yuborilmoqda…<span style="margin-left:auto">Qayta</span></button>`:'')+
-    (e?`<button class="sync err" id="syncE"><svg class="ico"><use href="#i-alert"/></svg>${e} ta prixod saqlanmadi — ko'rish</button>`:'');
+    (e?`<button class="sync err" id="syncE"><svg class="ico"><use href="#i-alert"/></svg>${e} ta prixod saqlanmadi — qayta yuborish</button>`:'');
   const sw=$('#syncW');if(sw)sw.onclick=()=>{flushOut();toast('Yuborilmoqda…',true)};
-  const se=$('#syncE');if(se)se.onclick=()=>{const it=OUT.find(x=>x.status==='err');if(it)openDay(it.st.date,false)};
+  const se=$('#syncE');if(se)se.onclick=()=>{OUT.forEach(x=>{if(x.status==='err')x.status='wait'});saveOut();flushOut();toast('Qayta yuborilmoqda…',true)};
 }
 
 /* ---------- kesh ---------- */
@@ -416,7 +419,7 @@ $('#hSync').onclick=()=>{refreshDates(false);flushOut()};
 $('#hSearch').onclick=()=>openDay('',true);
 
 /* ---------- kun ro'yxati ---------- */
-let DAY={date:'',search:false},ROWS=[],FT='',loadingRows=false;
+let DAY={date:'',search:false},ROWS=[],FT='',loadingRows=false,LOAD_ERR='';
 function openDay(date,search){
   DAY={date,search};FT='';
   $('#dTitle').textContent=search?'Qidirish':(date?(rel(date)||dmy(date)):'Barchasi');
@@ -430,8 +433,10 @@ async function loadRows(){
   const q=$('#dQ').value.trim();if(DAY.search&&!q){ROWS=[];renderRows();return}
   loadingRows=true;if(!ROWS.length)renderRows();
   const f=DAY.date&&!DAY.search?{from:DAY.date,to:DAY.date}:{limit:300};if(DAY.search)f.q=q;
-  try{const r=await api('listPrixod',f);ROWS=r.rows;if(DAY.date&&!DAY.search)store.set(dayKey(DAY.date),ROWS)}
-  catch(e){if(e.pin){logout(e.message);return}toast(e.message)}
+  LOAD_ERR='';
+  try{const r=await api('listPrixod',f);if(DAY.search&&$('#dQ').value.trim()!==q)return; // eski so'rov javobi
+    ROWS=r.rows;if(DAY.date&&!DAY.search)store.set(dayKey(DAY.date),ROWS)}
+  catch(e){if(e.pin){logout(e.message);return}LOAD_ERR=e.message;toast(e.message)}
   finally{loadingRows=false;renderRows()}
 }
 function rowHtml(r,showDate){
@@ -450,7 +455,7 @@ function renderRows(){
   $('#dFilter').innerHTML=types.length>1?[['','Hammasi'],...types.map(t=>[t,t])].map(([v,l])=>`<button class="${FT===v?'on':''}" data-t="${v}">${l}</button>`).join(''):'';
   const list=all.filter(r=>!FT||r.tur===FT).map(enrich);
   if(!list.length){$('#dSum').textContent='';$('#rows').innerHTML=loadingRows?'<div class="skel"></div><div class="skel"></div><div class="skel"></div>':
-    `<div class="empty">${DAY.search?($('#dQ').value.trim()?'Hech narsa topilmadi':'Artikul, nom yoki kodni yozing'):'Bu kunda prixod yo\'q'}</div>`;return}
+    `<div class="empty">${LOAD_ERR?'<b style="color:var(--danger)">Yuklanmadi: '+esc(LOAD_ERR)+'</b><br>Tepadagi ⟳ yoki qayta qidiring':DAY.search?($('#dQ').value.trim()?'Hech narsa topilmadi':'Artikul, nom yoki kodni yozing'):'Bu kunda prixod yo\'q'}</div>`;return}
   const pcs=list.reduce((s,r)=>s+(Number(r.pcs)||0),0);
   $('#dSum').innerHTML=`<span>${list.length} ta prixod</span><span class="num">${fmt(pcs)} dona</span>`;
   $('#rows').innerHTML=list.map(r=>rowHtml(r,!DAY.date||DAY.search)).join('');
