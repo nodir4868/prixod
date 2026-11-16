@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Gektar prixod</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Prixod">
+<meta name="theme-color" content="#0f1115">
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<style>
+:root{
+  --bg:#f3f4f6;--card:#fff;--text:#111827;--muted:#6b7280;--line:#e5e7eb;
+  --accent:#2563eb;--accent-ink:#fff;--ok:#059669;--err:#dc2626;--warn:#b45309;--chip:#eef2ff;
+}
+@media (prefers-color-scheme:dark){:root{
+  --bg:#0f1115;--card:#1a1d23;--text:#e5e7eb;--muted:#9ca3af;--line:#2b2f37;
+  --accent:#3b82f6;--accent-ink:#fff;--ok:#34d399;--err:#f87171;--warn:#fbbf24;--chip:#1e2a44;
+}}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--text);font:16px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+header{position:sticky;top:0;z-index:5;background:var(--card);border-bottom:1px solid var(--line)}
+.top{display:flex;align-items:center;justify-content:space-between;padding:10px 16px}
+.top b{font-size:18px}
+.tabs{display:flex}
+.tabs button{flex:1;border:0;background:none;color:var(--muted);padding:10px;font-size:15px;font-weight:600;border-bottom:3px solid transparent}
+.tabs button.on{color:var(--accent);border-color:var(--accent)}
+main{padding:12px 16px 90px;max-width:640px;margin:0 auto}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px}
+label.l{display:block;font-size:13px;color:var(--muted);margin:10px 0 6px}
+label.l:first-child{margin-top:0}
+input,textarea{width:100%;font-size:17px;padding:12px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--text);outline:none}
+input:focus,textarea:focus{border-color:var(--accent)}
+.seg{display:flex;gap:8px}
+.seg button{flex:1;padding:12px 4px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--text);font-size:16px;font-weight:600}
+.seg button.on{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.row{display:flex;gap:8px;align-items:stretch}
+.row input{flex:1;min-width:0}
+.btn{border:0;border-radius:10px;padding:12px 16px;font-size:16px;font-weight:600;background:var(--chip);color:var(--accent)}
+.btn.big{width:100%;padding:16px;font-size:18px;background:var(--accent);color:var(--accent-ink);margin-top:14px}
+.btn.big:disabled{opacity:.5}
+.btn.red{background:transparent;color:var(--err);border:1px solid var(--err)}
+.btn.red.sure{background:var(--err);color:#fff}
+.step{width:52px;font-size:22px}
+.found{margin-top:8px;padding:10px 12px;border-radius:10px;background:var(--chip);font-size:15px}
+.found.bad{background:transparent;border:1px dashed var(--err);color:var(--err)}
+.found .n{font-weight:600}
+.muted{color:var(--muted);font-size:13px}
+.total{margin-top:8px;font-size:15px}
+.total b{font-size:18px}
+#reader{margin-top:10px;border-radius:12px;overflow:hidden;display:none}
+.toast{position:fixed;left:16px;right:16px;bottom:20px;z-index:20;padding:14px;border-radius:12px;color:#fff;font-weight:600;text-align:center;display:none}
+.toast.ok{background:#059669}.toast.err{background:#dc2626}
+.item{display:flex;justify-content:space-between;gap:10px;padding:10px 0;border-top:1px solid var(--line)}
+.item:first-child{border-top:0}
+.item .t{font-weight:600}
+.item .s{font-size:13px;color:var(--muted)}
+.item .q{text-align:right;white-space:nowrap}
+.item .q b{display:block}
+.day{display:flex;justify-content:space-between;align-items:baseline;margin:16px 4px 6px;font-weight:700}
+.day span{font-weight:500;font-size:13px;color:var(--muted)}
+.tag{display:inline-block;font-size:12px;padding:1px 6px;border-radius:6px;background:var(--chip);color:var(--accent);margin-right:4px}
+.tag.Inbazar{color:var(--warn)}
+.filters{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.chips button{border:1px solid var(--line);background:var(--bg);color:var(--text);border-radius:20px;padding:6px 12px;font-size:14px}
+.chips button.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+.sheet{position:fixed;inset:0;z-index:10;background:rgba(0,0,0,.5);display:none;align-items:flex-end}
+.sheet .in{background:var(--card);width:100%;max-height:92vh;overflow:auto;border-radius:16px 16px 0 0;padding:16px;max-width:640px;margin:0 auto}
+.hidden{display:none!important}
+.center{text-align:center}
+</style>
+</head>
+<body>
+
+<div id="pinView" class="hidden">
+  <main><div class="card center">
+    <b style="font-size:20px">Gektar prixod</b>
+    <label class="l">PIN kod</label>
+    <input id="pinIn" type="password" inputmode="numeric" autocomplete="off">
+    <button class="btn big" id="pinBtn">Kirish</button>
+    <div id="pinErr" class="muted" style="color:var(--err);margin-top:8px"></div>
+  </div></main>
+</div>
+
+<div id="app" class="hidden">
+<header>
+  <div class="top"><b>Gektar prixod</b><span class="muted" id="catInfo"></span></div>
+  <div class="tabs"><button data-tab="add" class="on">Kiritish</button><button data-tab="list">Ro'yxat</button></div>
+</header>
+
+<main id="tab-add">
+  <div class="card" id="formCard"></div>
+  <div class="card">
+    <div class="muted" style="margin-bottom:4px">Shu telefondan bugun kiritilganlar</div>
+    <div id="recent"><div class="muted">Hali yo'q</div></div>
+  </div>
+</main>
+
+<main id="tab-list" class="hidden">
+  <div class="card">
+    <div class="filters">
+      <div><label class="l">Dan</label><input type="date" id="fFrom"></div>
+      <div><label class="l">Gacha</label><input type="date" id="fTo"></div>
+    </div>
+    <label class="l">Qidirish (artikul, nom, shtrix kod, komment)</label>
+    <input id="fQ" placeholder="masalan 265">
+    <div class="chips" id="fSklad"></div>
+    <div class="chips" id="fTur"></div>
+    <button class="btn" style="width:100%;margin-top:10px" id="fLoad">Yangilash</button>
+  </div>
+  <div id="listOut"></div>
+</main>
+</div>
+
+<div class="sheet" id="editSheet"><div class="in">
+  <div style="display:flex;justify-content:space-between;align-items:center">
+    <b>Tahrirlash</b><button class="btn" id="editClose">Yopish</button>
+  </div>
+  <div id="editForm"></div>
+</div></div>
+
+<div id="fileReader" class="hidden"></div>
+<input type="file" id="photoIn" accept="image/*" capture="environment" class="hidden">
+<div class="toast" id="toast"></div>
+
+<script>
+const SKLADS=['Gektar','Inbazar'], TURS=['Zborka','Bossuv','Vazvrat'];
+let PIN='', CAT={}, CAT_N=0;
+const $=s=>document.querySelector(s);
+const store={get(k,d){try{const v=localStorage.getItem(k);return v===null?d:JSON.parse(v)}catch(e){return d}},
+             set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
+const API_URL='https://script.google.com/macros/s/AKfycbyNjz1QlB02hN6Jwuy8iJNpGiJTpzE_IdT0QqW9XBvtNLI5mRxWXBfKZlH6JDfu2gtG/exec';
+async function api(fn,...args){
+  const ctl=new AbortController();const t=setTimeout(()=>ctl.abort(),60000);
+  let r;
+  try{r=await fetch(API_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({fn,pin:PIN,args}),redirect:'follow',signal:ctl.signal})}
+  catch(e){throw new Error(e.name==='AbortError'?'Server javob bermadi (internetni tekshiring)':'Internet yo\'q yoki server ishlamayapti')}
+  finally{clearTimeout(t)}
+  let j;try{j=await r.json()}catch(e){throw new Error('Server javobi noto\'g\'ri ('+r.status+')')}
+  if(!j.ok)throw new Error(j.error);return j.data;
+}
+function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
+function today(){const d=new Date();d.setMinutes(d.getMinutes()-d.getTimezoneOffset());return d.toISOString().slice(0,10)}
+function addDays(ymd,n){const d=new Date(ymd+'T12:00:00Z');d.setUTCDate(d.getUTCDate()+n);return d.toISOString().slice(0,10)}
+function dmy(ymd){if(!ymd)return '';const p=ymd.split('-');return p[2]+'.'+p[1]+'.'+p[0]}
+function fmt(n){return n===''||n==null?'—':Number(n).toLocaleString('ru-RU')}
+let toastT;function toast(msg,ok){const t=$('#toast');t.textContent=msg;t.className='toast '+(ok?'ok':'err');t.style.display='block';clearTimeout(toastT);toastT=setTimeout(()=>t.style.display='none',ok?2200:5000)}
+function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,10)}
+
+/* ---------- katalog ---------- */
+function setCatalog(rows){CAT={};rows.forEach(r=>{if(!(r[0] in CAT))CAT[r[0]]={kol:r[1],art:r[2],name:r[3]}});CAT_N=rows.length;$('#catInfo').textContent='katalog: '+CAT_N}
+async function loadCatalog(){
+  const c=store.get('cat',null);if(c)setCatalog(c);
+  try{const rows=await api('getCatalog');store.set('cat',rows);setCatalog(rows)}catch(e){if(!c)toast('Katalog yuklanmadi: '+e.message)}
+}
+function lookup(code){return CAT[String(code||'').trim()]||null}
+
+/* ---------- forma (kiritish va tahrirlash uchun bitta) ---------- */
+function buildForm(box,init,opts){
+  const s={date:init.date||today(),sklad:init.sklad||'',tur:init.tur||'',code:init.code||'',qty:init.qty||'',comment:init.comment||''};
+  const id=p=>box.id+'-'+p;
+  box.innerHTML=`
+   <label class="l">Дата склад</label><input type="date" id="${id('date')}" value="${s.date}">
+   <label class="l">Склад</label><div class="seg" id="${id('sklad')}">${SKLADS.map(x=>`<button type="button" data-v="${x}">${x}</button>`).join('')}</div>
+   <label class="l">Приход тури</label><div class="seg" id="${id('tur')}">${TURS.map(x=>`<button type="button" data-v="${x}">${x}</button>`).join('')}</div>
+   <label class="l">Штрих код</label>
+   <div class="row"><input id="${id('code')}" inputmode="numeric" autocomplete="off" value="${esc(s.code)}" placeholder="kamera yoki qo'lda">
+     <button type="button" class="btn" id="${id('scan')}">📷</button></div>
+   ${opts.reader?'<div id="reader"></div><div class="row hidden" id="scanBar" style="margin-top:8px"><button type="button" class="btn" style="flex:1" id="photoBtn">Rasmga olib o\'qish</button><button type="button" class="btn red" id="scanStop">Yopish</button></div>':''}
+   <div id="${id('found')}"></div>
+   <label class="l">Количество (korobka)</label>
+   <div class="row"><button type="button" class="btn step" data-d="-1">−</button>
+     <input id="${id('qty')}" type="number" inputmode="numeric" min="1" value="${esc(s.qty)}" style="text-align:center">
+     <button type="button" class="btn step" data-d="1">+</button></div>
+   <div class="total" id="${id('total')}"></div>
+   <label class="l">Комент (korobkada bo'lsa — kimning zakazi)</label>
+   <input id="${id('comment')}" value="${esc(s.comment)}" autocomplete="off">
+   <button type="button" class="btn big" id="${id('save')}">Saqlash</button>
+   ${opts.del?`<button type="button" class="btn red" style="width:100%;margin-top:10px" id="${id('del')}">O'chirish</button>`:''}`;
+  const seg=(name)=>{const el=$('#'+id(name));const paint=()=>el.querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.v===s[name]));
+    el.onclick=e=>{const b=e.target.closest('button');if(!b)return;s[name]=b.dataset.v;paint();opts.onPick&&opts.onPick(name,s[name])};paint()};
+  seg('sklad');seg('tur');
+  const codeIn=$('#'+id('code')),qtyIn=$('#'+id('qty'));
+  const refresh=()=>{
+    s.code=codeIn.value.replace(/\s+/g,'');s.qty=qtyIn.value;
+    const f=lookup(s.code),fb=$('#'+id('found'));
+    if(!s.code){fb.innerHTML='';}
+    else if(!f){fb.innerHTML=`<div class="found bad">${CAT_N?'Bu shtrix kod katalogda (Лист2) yo\'q':'Katalog yuklanmoqda…'}</div>`}
+    else fb.innerHTML=`<div class="found"><span class="tag">Art ${esc(f.art)}</span><span class="n">${esc(f.name)}</span><div class="muted">Korobkada: ${f.kol===''?'<span style="color:var(--err)">ko\'rsatilmagan</span>':fmt(f.kol)+' dona'}</div></div>`;
+    const q=Number(s.qty);$('#'+id('total')).innerHTML=f&&f.kol!==''&&q>0?`Jami: <b>${fmt(f.kol*q)}</b> dona`:'';
+  };
+  codeIn.oninput=refresh;qtyIn.oninput=refresh;
+  box.querySelectorAll('.step').forEach(b=>b.onclick=()=>{qtyIn.value=Math.max(1,(Number(qtyIn.value)||0)+Number(b.dataset.d));refresh()});
+  refresh();
+  const api_={
+    state:()=>({date:$('#'+id('date')).value,sklad:s.sklad,tur:s.tur,code:codeIn.value.replace(/\s+/g,''),qty:Number(qtyIn.value),comment:$('#'+id('comment')).value.trim()}),
+    setCode(c){codeIn.value=c;refresh();qtyIn.focus()},
+    reset(){codeIn.value='';qtyIn.value='';$('#'+id('comment')).value='';refresh()},
+    validate(){const st=api_.state();
+      if(!st.date)return 'Sanani tanlang';if(!st.sklad)return 'Skladni tanlang';if(!st.tur)return 'Prixod turini tanlang';
+      if(!st.code)return 'Shtrix kodni kiriting';const f=lookup(st.code);
+      if(!f)return CAT_N?'Shtrix kod katalogda yo\'q (Лист2 ga qo\'shing)':'Katalog hali yuklanmadi';
+      if(f.kol==='')return 'Bu shtrix kodda korobkadagi soni yo\'q — boshqa kodni (korobka kodini) uring';
+      if(!(st.qty>0)||Math.floor(st.qty)!==st.qty)return 'Sonini to\'g\'ri kiriting';return ''},
+    saveBtn:$('#'+id('save')),scanBtn:$('#'+id('scan')),delBtn:opts.del?$('#'+id('del')):null
+  };
+  return api_;
+}
+
+/* ---------- kamera ---------- */
+let scanner=null,scanTarget=null;
+const FORMATS=()=>[Html5QrcodeSupportedFormats.EAN_13,Html5QrcodeSupportedFormats.EAN_8,Html5QrcodeSupportedFormats.CODE_128,Html5QrcodeSupportedFormats.UPC_A];
+async function startScan(target){
+  scanTarget=target;
+  if(typeof Html5Qrcode==='undefined'){$('#photoIn').click();return}
+  $('#reader').style.display='block';$('#scanBar').classList.remove('hidden');
+  try{
+    if(!scanner)scanner=new Html5Qrcode('reader',{formatsToSupport:FORMATS(),experimentalFeatures:{useBarCodeDetectorIfSupported:true},verbose:false});
+    await scanner.start({facingMode:'environment'},{fps:12,qrbox:(w,h)=>({width:Math.min(w-20,320),height:Math.min(140,h-20)})},
+      txt=>{stopScan();scanTarget&&scanTarget.setCode(txt.trim());if(navigator.vibrate)navigator.vibrate(80)},()=>{});
+  }catch(e){
+    stopScan();toast('Jonli kamera ochilmadi — rasmga olib o\'qiymiz');$('#photoIn').click();
+  }
+}
+async function stopScan(){$('#reader').style.display='none';$('#scanBar').classList.add('hidden');try{if(scanner&&scanner.isScanning)await scanner.stop()}catch(e){}}
+$('#photoIn').onchange=async e=>{
+  const file=e.target.files[0];e.target.value='';if(!file)return;
+  try{const fr=new Html5Qrcode('fileReader',{formatsToSupport:FORMATS(),verbose:false});
+    const txt=await fr.scanFile(file,false);scanTarget&&scanTarget.setCode(txt.trim());}
+  catch(err){toast('Shtrix kod o\'qilmadi — yaqinroqdan, yorug\'da qayta oling')}
+};
+
+/* ---------- kiritish ---------- */
+let F, saving=false, pendingReq=null;
+function initAdd(){
+  const last=store.get('last',{});
+  F=buildForm($('#formCard'),{sklad:last.sklad,tur:last.tur},{reader:true,onPick:(k,v)=>{const l=store.get('last',{});l[k]=v;store.set('last',l)}});
+  F.scanBtn.onclick=()=>startScan(F);
+  $('#photoBtn').onclick=()=>{stopScan();$('#photoIn').click()};
+  $('#scanStop').onclick=stopScan;
+  F.saveBtn.onclick=saveNew;
+  renderRecent();
+}
+async function saveNew(){
+  if(saving)return;const err=F.validate();if(err){toast(err);return}
+  const st=F.state();const sig=JSON.stringify(st);
+  if(!pendingReq||pendingReq.sig!==sig)pendingReq={sig,id:uid()}; // qayta bosilsa — o'sha so'rov, ikki marta yozilmaydi
+  saving=true;F.saveBtn.disabled=true;F.saveBtn.textContent='Saqlanmoqda…';
+  try{
+    const r=await api('addPrixod',st,pendingReq.id);pendingReq=null;
+    const rec=store.get('recent',[]).filter(x=>x.date===today()||x.saved===today());
+    rec.unshift({...r,saved:today()});store.set('recent',rec.slice(0,60));
+    F.reset();renderRecent();toast('Saqlandi: Art '+r.art+' — '+r.qty+' kor ('+fmt(r.pcs)+' dona)',true);
+  }catch(e){toast('Saqlanmadi: '+e.message+'. Qayta bosing — ikki marta yozilmaydi.')}
+  finally{saving=false;F.saveBtn.disabled=false;F.saveBtn.textContent='Saqlash'}
+}
+function itemHtml(r){return `<div class="item" data-row="${r.row}"><div><div class="t"><span class="tag ${esc(r.sklad)}">${esc(r.sklad)}</span><span class="tag">${esc(r.tur)}</span>Art ${esc(r.art||'?')}</div>
+  <div class="s">${esc(r.name)}${r.comment?' · <i>'+esc(r.comment)+'</i>':''}</div></div>
+  <div class="q"><b>${fmt(r.pcs)}</b><span class="s">${fmt(r.qty)} kor</span></div></div>`}
+function renderRecent(){const rec=store.get('recent',[]).filter(x=>x.saved===today());
+  $('#recent').innerHTML=rec.length?rec.map(itemHtml).join(''):'<div class="muted">Hali yo\'q</div>'}
+
+/* ---------- ro'yxat ---------- */
+let LIST=[],fSk='',fTu='';
+function chips(el,vals,get,set){const paint=()=>{el.innerHTML=['Hammasi',...vals].map(v=>`<button data-v="${v==='Hammasi'?'':v}" class="${(v==='Hammasi'?'':v)===get()?'on':''}">${v}</button>`).join('')};
+  el.onclick=e=>{const b=e.target.closest('button');if(!b)return;set(b.dataset.v);paint();renderList()};paint()}
+function initList(){
+  $('#fTo').value=today();$('#fFrom').value=addDays(today(),-6);
+  chips($('#fSklad'),SKLADS,()=>fSk,v=>fSk=v);chips($('#fTur'),TURS,()=>fTu,v=>fTu=v);
+  $('#fLoad').onclick=loadList;$('#fQ').oninput=renderList;
+  $('#listOut').onclick=e=>{const it=e.target.closest('.item');if(it)openEdit(Number(it.dataset.row))};
+}
+async function loadList(){
+  $('#listOut').innerHTML='<div class="muted center">Yuklanmoqda…</div>';
+  try{const r=await api('listPrixod',{from:$('#fFrom').value,to:$('#fTo').value});LIST=r.rows;renderList();
+    if(r.more)toast('Ko\'p qator — oraliqni qisqartiring')}
+  catch(e){$('#listOut').innerHTML='<div class="card" style="color:var(--err)">'+esc(e.message)+'</div>'}
+}
+function renderList(){
+  const q=$('#fQ').value.trim().toLowerCase();
+  const rows=LIST.filter(r=>(!fSk||r.sklad===fSk)&&(!fTu||r.tur===fTu)&&(!q||(r.art+' '+r.name+' '+r.code+' '+r.comment).toLowerCase().includes(q)));
+  if(!rows.length){$('#listOut').innerHTML='<div class="muted center">Prixod topilmadi</div>';return}
+  const days={};rows.forEach(r=>(days[r.date]=days[r.date]||[]).push(r));
+  $('#listOut').innerHTML=Object.keys(days).map(d=>{const a=days[d];const pcs=a.reduce((s,r)=>s+(Number(r.pcs)||0),0),kor=a.reduce((s,r)=>s+(Number(r.qty)||0),0);
+    return `<div class="day">${dmy(d)}<span>${a.length} ta · ${fmt(kor)} kor · ${fmt(pcs)} dona</span></div><div class="card">${a.map(itemHtml).join('')}</div>`}).join('');
+}
+
+/* ---------- tahrirlash ---------- */
+let E=null,editRow=null;
+function openEdit(row){
+  editRow=LIST.find(r=>r.row===row);if(!editRow)return;
+  E=buildForm($('#editForm'),editRow,{del:true});
+  E.scanBtn.onclick=()=>{scanTarget=E;$('#photoIn').click()};
+  E.saveBtn.onclick=saveEdit;
+  E.delBtn.onclick=delEdit;
+  $('#editSheet').style.display='flex';
+}
+function closeEdit(){$('#editSheet').style.display='none';E=null}
+$('#editClose').onclick=closeEdit;
+async function saveEdit(){
+  const err=E.validate();if(err){toast(err);return}
+  E.saveBtn.disabled=true;E.saveBtn.textContent='Saqlanmoqda…';
+  try{await api('updatePrixod',editRow.row,editRow.fp,E.state());closeEdit();toast('O\'zgartirildi',true);loadList()}
+  catch(e){toast(e.message);E.saveBtn.disabled=false;E.saveBtn.textContent='Saqlash'}
+}
+async function delEdit(){
+  const b=E.delBtn;if(!b.classList.contains('sure')){b.classList.add('sure');b.textContent='Rostdan o\'chirilsinmi? Yana bosing';return}
+  b.disabled=true;b.textContent='O\'chirilmoqda…';
+  try{await api('deletePrixod',editRow.row,editRow.fp);closeEdit();toast('O\'chirildi',true);loadList()}
+  catch(e){toast(e.message);b.disabled=false}
+}
+
+/* ---------- tablar va kirish ---------- */
+document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>{
+  document.querySelectorAll('.tabs button').forEach(x=>x.classList.toggle('on',x===b));
+  $('#tab-add').classList.toggle('hidden',b.dataset.tab!=='add');$('#tab-list').classList.toggle('hidden',b.dataset.tab!=='list');
+  if(b.dataset.tab==='list'){stopScan();if(!LIST.length)loadList()}
+});
+async function login(pin){
+  PIN=pin;
+  try{await api('ping');store.set('pin',pin);$('#pinView').classList.add('hidden');$('#app').classList.remove('hidden');
+    initAdd();initList();loadCatalog();}
+  catch(e){PIN='';store.set('pin','');$('#app').classList.add('hidden');$('#pinView').classList.remove('hidden');$('#pinErr').textContent=e.message}
+}
+$('#pinBtn').onclick=()=>login($('#pinIn').value.trim());
+$('#pinIn').onkeydown=e=>{if(e.key==='Enter')login($('#pinIn').value.trim())};
+const saved=store.get('pin','');if(saved)login(saved);else $('#pinView').classList.remove('hidden');
+</script>
+</body>
+</html>
